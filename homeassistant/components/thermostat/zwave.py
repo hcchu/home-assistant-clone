@@ -13,7 +13,6 @@ import datetime
 from urllib.error import URLError
 
 import homeassistant.components.zwave as zwave
-from homeassistant.helpers.entity import Entity
 from homeassistant.components.thermostat import (ThermostatDevice, STATE_COOL,
                                                  STATE_IDLE, STATE_HEAT)
 from homeassistant.const import (CONF_HOST, TEMP_FAHRENHEIT)
@@ -33,28 +32,58 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     node = zwave.NETWORK.nodes[discovery_info[zwave.ATTR_NODE_ID]]
     value = node.values[discovery_info[zwave.ATTR_VALUE_ID]]
 
-    if value.command_class != zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
-        return
-
     value.set_change_verified(False)
+
+    if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_OPERATING_STATE:
+        add_devices([ZwaveThermostat(value)])
+    #elif value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_MODE:
+    #    thermostat_group[node.node_id][value.command_class] = value
+    #elif value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
+    #    thermostat_group[node.node_id][value.command_class] = value
+
+
 
     # if 1 in groups and (zwave.NETWORK.controller.node_id not in
     #                     groups[1].associations):
     #     node.groups[1].add_association(zwave.NETWORK.controller.node_id)
 
 
-    add_devices([ZwaveThermostat(value)])
 
 
-class ZwaveThermostat(Entity):
+class ZwaveThermostat(ThermostatDevice):
     """ Represents a Z-Wave thermostat. """
 
-    def __init__(self, setpoint_value):
+    def __init__(self, value):
         from openzwave.network import ZWaveNetwork
         from pydispatch import dispatcher
+        import homeassistant.components.zwave as zwave
+        from time import sleep
 
-        self._value = setpoint_value
-        self._node = setpoint_value.node
+        mode_value = None
+        setpoints = {}
+        sleep(5)
+        for n in zwave.NETWORK.nodes:
+            if n == value.node.node_id: # this is a thermostat
+                for k, v in zwave.NETWORK.nodes[n].values.items():
+                    if v.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
+                        setpoints[v.label] = v
+                    elif v.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL:
+                        sensor_value = v
+                    elif v.command_class == zwave.COMMAND_CLASS_THERMOSTAT_MODE:
+                        mode_value = v
+
+        #for setpoint in setpoints:
+        #    print(setpoint.label, setpoint.data)
+
+    #    print("--------  {0}  -----------".format(setpoint_value))
+        self._value = value
+        self._node = value.node
+        self._current_temperature = sensor_value.data
+        if mode_value:
+            self._mode = mode_value.data
+        else:
+            self._mode = "UNKNOWN"
+        self._setpoints = setpoints
 
         dispatcher.connect(
             self.value_changed, ZWaveNetwork.SIGNAL_VALUE_CHANGED)
@@ -82,32 +111,56 @@ class ZwaveThermostat(Entity):
         return "{} {}".format(name, self._value.label)
 
     @property
-    def state(self):
-        """ Returns the state of the sensor. """
+    def operation(self):
         return self._value.data
 
     @property
-    def state_attributes(self):
-        """ Returns the state attributes. """
-        attrs = {
-            zwave.ATTR_NODE_ID: self._node.node_id,
-        }
+    def current_temperature(self):
+        return int(self._current_temperature)
 
-        battery_level = self._node.get_battery_level()
+    @property
+    def target_temperature(self):
+        if abs(self._current_temperature - self._setpoints["Heating 1"].data) < abs(self.current_temperature - self._setpoints["Cooling 1"].data):
+            return self._setpoints["Heating 1"].data
+        else:
+            return self._setpoints["Cooling 1"].data
 
-        if battery_level is not None:
-            attrs[ATTR_BATTERY_LEVEL] = battery_level
+    @property
+    def state(self):
+        """ Returns the state of the sensor. """
+        #return self._value.data
+        return int(self._current_temperature)
 
-        location = self._node.location
+    def set_temperature(self, temperature):
+        if temperature < self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data:
+            self._setpoints["Heating 1"].data = temperature
+        elif temperature > self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data: 
+            self._setpoints["Heating 1"].data = temperature
+        elif temperature > self._setpoints["Cooling 1"].data and temperature > self._setpoints["Cooling 1"].data: 
+            self._setpoints["Cooling 1"].data = temperature
 
-        if location:
-            attrs[ATTR_LOCATION] = location
 
-        return attrs
+    #jdef state_attributes(self):
+     #j   """ Returns the state attributes. """
+      #j  attrs = {
+       #j     zwave.ATTR_NODE_ID: self._node.node_id,
+    #j    }
+
+     #   battery_level = self._node.get_battery_level()
+#
+#        if battery_level is not None:
+#            attrs[ATTR_BATTERY_LEVEL] = battery_level
+#
+#        location = self._node.location
+#
+#        if location:
+#            attrs[ATTR_LOCATION] = location
+#
+#        return attrs
 
     @property
     def unit_of_measurement(self):
-        return self._value.units
+        return TEMP_FAHRENHEIT
 
     def value_changed(self, value):
         """ Called when a value has changed on the network. """
