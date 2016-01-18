@@ -78,7 +78,7 @@ class ZwaveThermostat(ThermostatDevice):
     #    print("--------  {0}  -----------".format(setpoint_value))
         self._value = value
         self._node = value.node
-        self._current_temperature = sensor_value.data
+        self._sensor = sensor_value
         if mode_value:
             self._mode = mode_value.data
         else:
@@ -116,11 +116,11 @@ class ZwaveThermostat(ThermostatDevice):
 
     @property
     def current_temperature(self):
-        return int(self._current_temperature)
+        return int(self._sensor.data)
 
     @property
     def target_temperature(self):
-        if abs(self._current_temperature - self._setpoints["Heating 1"].data) < abs(self.current_temperature - self._setpoints["Cooling 1"].data):
+        if abs(self._sensor.data - self._setpoints["Heating 1"].data) < abs(self._sensor.data - self._setpoints["Cooling 1"].data):
             return self._setpoints["Heating 1"].data
         else:
             return self._setpoints["Cooling 1"].data
@@ -128,8 +128,7 @@ class ZwaveThermostat(ThermostatDevice):
     @property
     def state(self):
         """ Returns the state of the sensor. """
-        #return self._value.data
-        return int(self._current_temperature)
+        return int(self._sensor.data)
 
     def set_temperature(self, temperature):
         if temperature < self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data:
