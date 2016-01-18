@@ -80,7 +80,7 @@ class ZwaveThermostat(ThermostatDevice):
         self._node = value.node
         self._sensor = sensor_value
         if mode_value:
-            self._mode = mode_value.data
+            self._mode = mode_value
         else:
             self._mode = "UNKNOWN"
         self._setpoints = setpoints
@@ -138,24 +138,12 @@ class ZwaveThermostat(ThermostatDevice):
         elif temperature > self._setpoints["Cooling 1"].data and temperature > self._setpoints["Cooling 1"].data: 
             self._setpoints["Cooling 1"].data = temperature
 
+    @property
+    def device_state_attributes(self):
+        return {
+                "mode": self._mode.data
+                }
 
-    #jdef state_attributes(self):
-     #j   """ Returns the state attributes. """
-      #j  attrs = {
-       #j     zwave.ATTR_NODE_ID: self._node.node_id,
-    #j    }
-
-     #   battery_level = self._node.get_battery_level()
-#
-#        if battery_level is not None:
-#            attrs[ATTR_BATTERY_LEVEL] = battery_level
-#
-#        location = self._node.location
-#
-#        if location:
-#            attrs[ATTR_LOCATION] = location
-#
-#        return attrs
 
     @property
     def unit_of_measurement(self):
