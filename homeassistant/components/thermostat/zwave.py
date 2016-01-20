@@ -64,6 +64,8 @@ class ZwaveThermostat(ThermostatDevice):
         sleep(5)
         for n in zwave.NETWORK.nodes:
             if n == value.node.node_id: # this is a thermostat
+                zwave.NETWORK.nodes[n].refresh_info()
+                print(zwave.NETWORK.nodes[n].get_values_for_command_class(64))
                 for k, v in zwave.NETWORK.nodes[n].values.items():
                     if v.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
                         setpoints[v.label] = v
@@ -95,7 +97,7 @@ class ZwaveThermostat(ThermostatDevice):
     @property
     def should_poll(self):
         """ False because we will push our own state to HA when changed. """
-        return False
+        return True
 
     @property
     def unique_id(self):
@@ -131,17 +133,27 @@ class ZwaveThermostat(ThermostatDevice):
         return int(self._sensor.data)
 
     def set_temperature(self, temperature):
-        if temperature < self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data:
-            self._setpoints["Heating 1"].data = temperature
-        elif temperature > self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data: 
-            self._setpoints["Heating 1"].data = temperature
-        elif temperature > self._setpoints["Cooling 1"].data and temperature > self._setpoints["Cooling 1"].data: 
-            self._setpoints["Cooling 1"].data = temperature
+        if self._mode.data == "Heat":
+            self._setpoints["Heating 1"].data = int(temperature)
+        elif self._mode.data == "Cool":
+            self._setpoints["Cooling 1"].data = int(temperature)
+        else: # take best guess whether to heat or cool
+            if temperature < self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data:
+                self._setpoints["Heating 1"].data = int(temperature)
+            elif temperature > self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data: 
+                self._setpoints["Heating 1"].data = int(temperature)
+            elif temperature > self._setpoints["Cooling 1"].data and temperature > self._setpoints["Cooling 1"].data: 
+                self._setpoints["Cooling 1"].data = int(temperature)
 
     @property
     def device_state_attributes(self):
+        if self._mode.data:
+            mode = self._mode.data
+        else:
+            mode = "Unknown"
         return {
-                "mode": self._mode.data
+                "mode": mode,
+                "node_id": self._node.node_id
                 }
 
 
@@ -151,5 +163,25 @@ class ZwaveThermostat(ThermostatDevice):
 
     def value_changed(self, value):
         """ Called when a value has changed on the network. """
-        if self._value.value_id == value.value_id:
-            self.update_ha_state()
+        if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
+            self._setpoints[value.label] = value
+        elif value.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL:
+            self._sensor = value
+            self._current_temperature = value.data
+        elif value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_MODE:
+            self._mode = value
+
+    def update(self):
+        import homeassistant.components.zwave as zwave
+
+        zwave.NETWORK.nodes[self._node.node_id].refresh_info()
+        for k, value in zwave.NETWORK.nodes[self._node.node_id].values.items():
+            if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
+                self._setpoints[value.label] = value
+            elif value.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL:
+                self._sensor = value
+                self._current_temperature = value.data
+            elif value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_MODE:
+                self._mode = value
+
+
