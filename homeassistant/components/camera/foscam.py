@@ -40,8 +40,10 @@ class FoscamCamera(Camera):
         self._username = device_info.get('username')
         self._password = device_info.get('password')
         self._snap_picture_url = self._base_url \
-            + 'cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=' \
+            + 'snapshot.cgi?user=' \
             + self._username + '&pwd=' + self._password
+        #    + 'cgi-bin/CGIProxy.fcgi?cmd=snapPicture2&usr=' \
+        #http://172.17.17.196/snapshot.cgi?user=admin&pwd=&count=0
         self._name = device_info.get('name', 'Foscam Camera')
 
         _LOGGER.info('Using the following URL for %s: %s',
