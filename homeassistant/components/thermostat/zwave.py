@@ -59,16 +59,14 @@ class ZwaveThermostat(ThermostatDevice):
         import homeassistant.components.zwave as zwave
         from time import sleep
 
-        mode_value = None
-        setpoints = {}
         sleep(5)
+        setpoints = {}
         for n in zwave.NETWORK.nodes:
             if n == value.node.node_id: # this is a thermostat
-                zwave.NETWORK.nodes[n].refresh_info()
-                print(zwave.NETWORK.nodes[n].get_values_for_command_class(64))
                 for k, v in zwave.NETWORK.nodes[n].values.items():
                     if v.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
-                        setpoints[v.label] = v
+                        setpoints["{}_{}".format(n,v.label)] = v
+                        print(n, v.label, v.id_on_network)
                     elif v.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL:
                         sensor_value = v
                     elif v.command_class == zwave.COMMAND_CLASS_THERMOSTAT_MODE:
@@ -81,10 +79,7 @@ class ZwaveThermostat(ThermostatDevice):
         self._value = value
         self._node = value.node
         self._sensor = sensor_value
-        if mode_value:
-            self._mode = mode_value
-        else:
-            self._mode = "UNKNOWN"
+        self._mode = mode_value
         self._setpoints = setpoints
 
         dispatcher.connect(
@@ -123,10 +118,12 @@ class ZwaveThermostat(ThermostatDevice):
 
     @property
     def target_temperature(self):
-        if abs(self._sensor.data - self._setpoints["Heating 1"].data) < abs(self._sensor.data - self._setpoints["Cooling 1"].data):
-            return self._setpoints["Heating 1"].data
+        cooling_label = "{}_{}".format(self._node.node_id, "Cooling 1")
+        heating_label = "{}_{}".format(self._node.node_id, "Heating 1")
+        if abs(self._sensor.data - self._setpoints[heating_label].data) < abs(self._sensor.data - self._setpoints[cooling_label].data):
+            return self._setpoints[heating_label].data
         else:
-            return self._setpoints["Cooling 1"].data
+            return self._setpoints[cooling_label].data
 
     @property
     def state(self):
@@ -134,24 +131,28 @@ class ZwaveThermostat(ThermostatDevice):
         return int(self._sensor.data)
 
     def set_temperature(self, temperature):
+        print("setting temperature on {0}".format(self._node.node_id))
+        print("wake status: {0}".format(self._node.can_wake_up()))
+        cooling_label = "{}_{}".format(self._node.node_id, "Cooling 1")
+        heating_label = "{}_{}".format(self._node.node_id, "Heating 1")
         if self._mode.data == "Heat":
-            self._setpoints["Heating 1"].data = int(temperature)
+            self._setpoints[heating_label].data = int(temperature)
         elif self._mode.data == "Cool":
-            self._setpoints["Cooling 1"].data = int(temperature)
+            self._setpoints[cooling_label].data = int(temperature)
         else: # take best guess whether to heat or cool
-            if temperature < self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data:
-                self._setpoints["Heating 1"].data = int(temperature)
-            elif temperature > self._setpoints["Heating 1"].data and temperature < self._setpoints["Cooling 1"].data: 
-                self._setpoints["Heating 1"].data = int(temperature)
-            elif temperature > self._setpoints["Cooling 1"].data and temperature > self._setpoints["Cooling 1"].data: 
-                self._setpoints["Cooling 1"].data = int(temperature)
+            if temperature < self._setpoints[heating_label].data and temperature < self._setpoints[cooling_label].data:
+                self._setpoints[heating_label].data = int(temperature)
+            elif temperature > self._setpoints[heating_label].data and temperature < self._setpoints[cooling_label].data: 
+                self._setpoints[heating_label].data = int(temperature)
+            elif temperature > self._setpoints[cooling_label].data and temperature > self._setpoints[cooling_label].data: 
+                self._setpoints[cooling_label].data = int(temperature)
+
+        print("refresh: {0}".format(self._setpoints[heating_label].refresh()))
+        print("id: {0}".format(self._setpoints[heating_label].id_on_network))
 
     @property
     def device_state_attributes(self):
-        if self._mode.data:
-            mode = self._mode.data
-        else:
-            mode = "Unknown"
+        mode = self._mode.data
         return {
                 "mode": mode,
                 "node_id": self._node.node_id
@@ -164,12 +165,12 @@ class ZwaveThermostat(ThermostatDevice):
 
     def value_changed(self, value):
         """ Called when a value has changed on the network. """
-        if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
-            self._setpoints[value.label] = value
-        elif value.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL:
+        if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT and value.node.node_id == self._node.node_id:
+            self._setpoints["{}_{}".format(self._node.node_id,value.label)] = value
+        elif value.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL and value.node.node_id == self._node.node_id:
             self._sensor = value
             self._current_temperature = value.data
-        elif value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_MODE:
+        elif value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_MODE and value.node.node_id == self._node.node_id:
             self._mode = value
 
     def update(self):
@@ -178,7 +179,7 @@ class ZwaveThermostat(ThermostatDevice):
         zwave.NETWORK.nodes[self._node.node_id].refresh_info()
         for k, value in zwave.NETWORK.nodes[self._node.node_id].values.items():
             if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
-                self._setpoints[value.label] = value
+                self._setpoints["{}_{}".format(self._node.node_id,value.label)] = value
             elif value.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL:
                 self._sensor = value
                 self._current_temperature = value.data
