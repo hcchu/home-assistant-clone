@@ -167,6 +167,7 @@ class ZwaveThermostat(ThermostatDevice):
         """ Called when a value has changed on the network. """
         if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT and value.node.node_id == self._node.node_id:
             self._setpoints["{}_{}".format(self._node.node_id,value.label)] = value
+            print("Value changed: {}_{} = {}".format(self._node.node_id,value.label, value)) 
         elif value.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL and value.node.node_id == self._node.node_id:
             self._sensor = value
             self._current_temperature = value.data
@@ -180,6 +181,7 @@ class ZwaveThermostat(ThermostatDevice):
         for k, value in zwave.NETWORK.nodes[self._node.node_id].values.items():
             if value.command_class == zwave.COMMAND_CLASS_THERMOSTAT_SETPOINT:
                 self._setpoints["{}_{}".format(self._node.node_id,value.label)] = value
+                print("Update: {}_{} = {}".format(self._node.node_id,value.label, value)) 
             elif value.command_class == zwave.COMMAND_CLASS_SENSOR_MULTILEVEL:
                 self._sensor = value
                 self._current_temperature = value.data
