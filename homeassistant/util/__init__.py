@@ -15,6 +15,7 @@ import socket
 import random
 import string
 from functools import wraps
+from types import MappingProxyType
 
 from .dt import datetime_to_local_str, utcnow
 
@@ -42,7 +43,7 @@ def slugify(text):
 
 def repr_helper(inp):
     """ Helps creating a more readable string representation of objects. """
-    if isinstance(inp, dict):
+    if isinstance(inp, (dict, MappingProxyType)):
         return ", ".join(
             repr_helper(key)+"="+repr_helper(item) for key, item
             in inp.items())
@@ -283,7 +284,7 @@ class Throttle(object):
 
 
 class ThreadPool(object):
-    """ A priority queue-based thread pool. """
+    """A priority queue-based thread pool."""
     # pylint: disable=too-many-instance-attributes
 
     def __init__(self, job_handler, worker_count=0, busy_callback=None):
@@ -310,7 +311,7 @@ class ThreadPool(object):
             self.add_worker()
 
     def add_worker(self):
-        """ Adds a worker to the thread pool. Resets warning limit. """
+        """Add worker to the thread pool and reset warning limit."""
         with self._lock:
             if not self.running:
                 raise RuntimeError("ThreadPool not running")
@@ -323,7 +324,7 @@ class ThreadPool(object):
             self.busy_warning_limit = self.worker_count * 3
 
     def remove_worker(self):
-        """ Removes a worker from the thread pool. Resets warning limit. """
+        """Remove worker from the thread pool and reset warning limit."""
         with self._lock:
             if not self.running:
                 raise RuntimeError("ThreadPool not running")
@@ -353,17 +354,18 @@ class ThreadPool(object):
                     self._work_queue.qsize())
 
     def block_till_done(self):
-        """ Blocks till all work is done. """
+        """Block till current work is done."""
         self._work_queue.join()
+        # import traceback
+        # traceback.print_stack()
 
     def stop(self):
-        """ Stops all the threads. """
+        """Finish all the jobs and stops all the threads."""
+        self.block_till_done()
+
         with self._lock:
             if not self.running:
                 return
-
-            # Ensure all current jobs finish
-            self.block_till_done()
 
             # Tell the workers to quit
             for _ in range(self.worker_count):
@@ -375,7 +377,7 @@ class ThreadPool(object):
             self.block_till_done()
 
     def _worker(self):
-        """ Handles jobs for the thread pool. """
+        """Handle jobs for the thread pool."""
         while True:
             # Get new item from work_queue
             job = self._work_queue.get().item

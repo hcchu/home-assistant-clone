@@ -1,22 +1,17 @@
 """
 tests.test_component_group
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Tests the group compoments.
 """
 # pylint: disable=protected-access,too-many-public-methods
 import unittest
-import logging
 
-import homeassistant.core as ha
 from homeassistant.const import (
     STATE_ON, STATE_OFF, STATE_HOME, STATE_UNKNOWN, ATTR_ICON, ATTR_HIDDEN)
 import homeassistant.components.group as group
 
-
-def setUpModule():   # pylint: disable=invalid-name
-    """ Setup to ignore group errors. """
-    logging.disable(logging.CRITICAL)
+from tests.common import get_test_home_assistant
 
 
 class TestComponentsGroup(unittest.TestCase):
@@ -24,7 +19,7 @@ class TestComponentsGroup(unittest.TestCase):
 
     def setUp(self):  # pylint: disable=invalid-name
         """ Init needed objects. """
-        self.hass = ha.HomeAssistant()
+        self.hass = get_test_home_assistant()
 
         self.hass.states.set('light.Bowl', STATE_ON)
         self.hass.states.set('light.Ceiling', STATE_OFF)
@@ -236,3 +231,14 @@ class TestComponentsGroup(unittest.TestCase):
         grp2 = group.Group(self.hass, 'Je suis Charlie')
 
         self.assertNotEqual(grp1.entity_id, grp2.entity_id)
+
+    def test_expand_entity_ids_expands_nested_groups(self):
+        group.Group(self.hass, 'light', ['light.test_1', 'light.test_2'])
+        group.Group(self.hass, 'switch', ['switch.test_1', 'switch.test_2'])
+        group.Group(self.hass, 'group_of_groups', ['group.light',
+                                                   'group.switch'])
+
+        self.assertEqual(
+            ['light.test_1', 'light.test_2', 'switch.test_1', 'switch.test_2'],
+            sorted(group.expand_entity_ids(self.hass,
+                                           ['group.group_of_groups'])))
