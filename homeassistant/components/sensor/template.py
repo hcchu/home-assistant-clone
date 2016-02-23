@@ -1,6 +1,4 @@
 """
-homeassistant.components.sensor.template
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Allows the creation of a sensor that breaks out state_attributes
 from other entities.
 
@@ -15,7 +13,8 @@ from homeassistant.const import (
 from homeassistant.core import EVENT_STATE_CHANGED
 from homeassistant.exceptions import TemplateError
 from homeassistant.helpers.entity import Entity, generate_entity_id
-from homeassistant.util import slugify, template
+from homeassistant.helpers import template
+from homeassistant.util import slugify
 
 ENTITY_ID_FORMAT = DOMAIN + '.{}'
 
@@ -26,7 +25,7 @@ STATE_ERROR = 'error'
 
 # pylint: disable=unused-argument
 def setup_platform(hass, config, add_devices, discovery_info=None):
-    """ Sets up the sensors. """
+    """Sets up the sensors."""
 
     sensors = []
     if config.get(CONF_SENSORS) is None:
@@ -68,7 +67,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
 
 class SensorTemplate(Entity):
-    """ Represents a Template Sensor. """
+    """Represents a Template Sensor."""
 
     # pylint: disable=too-many-arguments
     def __init__(self,
@@ -96,25 +95,26 @@ class SensorTemplate(Entity):
 
     @property
     def name(self):
-        """ Returns the name of the device. """
+        """Returns the name of the sensor."""
         return self._name
 
     @property
     def state(self):
-        """ Returns the state of the device. """
+        """Returns the state of the sensor."""
         return self._state
 
     @property
     def unit_of_measurement(self):
-        """ Returns the unit_of_measurement of the device. """
+        """Returns the unit_of_measurement of the device."""
         return self._unit_of_measurement
 
     @property
     def should_poll(self):
-        """ Tells Home Assistant not to poll this entity. """
+        """No polling needed."""
         return False
 
     def update(self):
+        """Gets the latest data and updates the states."""
         try:
             self._state = template.render(self.hass, self._template)
         except TemplateError as ex:

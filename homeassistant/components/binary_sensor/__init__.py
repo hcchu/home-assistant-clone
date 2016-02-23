@@ -1,6 +1,4 @@
 """
-homeassistant.components.binary_sensor
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Component to interface with binary sensors (sensors which only know two states)
 that can be monitored.
 
@@ -12,6 +10,7 @@ import logging
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import (STATE_ON, STATE_OFF)
+from homeassistant.components import (bloomsky, mysensors, zwave)
 
 DOMAIN = 'binary_sensor'
 SCAN_INTERVAL = 30
@@ -27,13 +26,21 @@ SENSOR_CLASSES = [
     'light',     # Lightness threshold
     'power',     # Power, over-current, etc
     'safety',    # Generic on=unsafe, off=safe
-    ]
+]
+
+# Maps discovered services to their platforms
+DISCOVERY_PLATFORMS = {
+    bloomsky.DISCOVER_BINARY_SENSORS: 'bloomsky',
+    mysensors.DISCOVER_BINARY_SENSORS: 'mysensors',
+    zwave.DISCOVER_BINARY_SENSORS: 'zwave',
+}
 
 
 def setup(hass, config):
-    """ Track states and offer events for binary sensors. """
+    """Track states and offer events for binary sensors."""
     component = EntityComponent(
-        logging.getLogger(__name__), DOMAIN, hass, SCAN_INTERVAL)
+        logging.getLogger(__name__), DOMAIN, hass, SCAN_INTERVAL,
+        DISCOVERY_PLATFORMS)
 
     component.setup(config)
 
@@ -42,30 +49,29 @@ def setup(hass, config):
 
 # pylint: disable=no-self-use
 class BinarySensorDevice(Entity):
-    """ Represents a binary sensor. """
+    """Represent a binary sensor."""
 
     @property
     def is_on(self):
-        """ True if the binary sensor is on. """
+        """Return True if the binary sensor is on."""
         return None
 
     @property
     def state(self):
-        """ Returns the state of the binary sensor. """
+        """Return the state of the binary sensor."""
         return STATE_ON if self.is_on else STATE_OFF
 
     @property
-    def friendly_state(self):
-        """ Returns the friendly state of the binary sensor. """
-        return None
-
-    @property
     def sensor_class(self):
-        """ Returns the class of this sensor, from SENSOR_CASSES. """
+        """Return the class of this sensor, from SENSOR_CLASSES."""
         return None
 
     @property
-    def device_state_attributes(self):
-        return {
-            'sensor_class': self.sensor_class,
-        }
+    def state_attributes(self):
+        """Return device specific state attributes."""
+        attr = {}
+
+        if self.sensor_class is not None:
+            attr['sensor_class'] = self.sensor_class
+
+        return attr

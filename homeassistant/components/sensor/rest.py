@@ -1,7 +1,5 @@
 """
-homeassistant.components.sensor.rest
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The rest sensor will consume responses sent by an exposed REST API.
+Support for REST API sensors..
 
 For more details about this platform, please refer to the documentation at
 https://home-assistant.io/components/sensor.rest/
@@ -13,7 +11,8 @@ import requests
 
 from homeassistant.const import CONF_VALUE_TEMPLATE, STATE_UNKNOWN
 from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle, template
+from homeassistant.helpers import template
+from homeassistant.util import Throttle
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 
 # pylint: disable=unused-variable
 def setup_platform(hass, config, add_devices, discovery_info=None):
-    """ Get the REST sensor. """
+    """Get the REST sensor."""
     resource = config.get('resource', None)
     method = config.get('method', DEFAULT_METHOD)
     payload = config.get('payload', None)
@@ -46,7 +45,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
 # pylint: disable=too-many-arguments
 class RestSensor(Entity):
-    """ Implements a REST sensor. """
+    """Implements a REST sensor."""
 
     def __init__(self, hass, rest, name, unit_of_measurement, value_template):
         self._hass = hass
@@ -59,21 +58,21 @@ class RestSensor(Entity):
 
     @property
     def name(self):
-        """ The name of the sensor. """
+        """The name of the sensor."""
         return self._name
 
     @property
     def unit_of_measurement(self):
-        """ Unit the value is expressed in. """
+        """Unit the value is expressed in."""
         return self._unit_of_measurement
 
     @property
     def state(self):
-        """ Returns the state of the device. """
+        """Returns the state of the device."""
         return self._state
 
     def update(self):
-        """ Gets the latest data from REST API and updates the state. """
+        """Gets the latest data from REST API and updates the state."""
         self.rest.update()
         value = self.rest.data
 
@@ -97,7 +96,7 @@ class RestData(object):
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self):
-        """ Gets the latest data from REST service with GET method. """
+        """Gets the latest data from REST service with GET method."""
         try:
             with requests.Session() as sess:
                 response = sess.send(self._request, timeout=10,

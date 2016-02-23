@@ -39,6 +39,9 @@ omit =
     homeassistant/components/verisure.py
     homeassistant/components/*/verisure.py
 
+    homeassistant/components/wemo.py
+    homeassistant/components/*/wemo.py
+
     homeassistant/components/wink.py
     homeassistant/components/*/wink.py
 
@@ -66,7 +69,10 @@ omit =
     homeassistant/components/binary_sensor/arest.py
     homeassistant/components/binary_sensor/rest.py
     homeassistant/components/browser.py
-    homeassistant/components/camera/*
+    homeassistant/components/camera/bloomsky.py
+    homeassistant/components/camera/foscam.py
+    homeassistant/components/camera/generic.py
+    homeassistant/components/camera/mjpeg.py
     homeassistant/components/device_tracker/actiontec.py
     homeassistant/components/device_tracker/aruba.py
     homeassistant/components/device_tracker/asuswrt.py
@@ -142,12 +148,12 @@ omit =
     homeassistant/components/sensor/worldclock.py
     homeassistant/components/switch/arest.py
     homeassistant/components/switch/edimax.py
+    homeassistant/components/switch/dlink.py
     homeassistant/components/switch/hikvisioncam.py
     homeassistant/components/switch/mystrom.py
     homeassistant/components/switch/orvibo.py
     homeassistant/components/switch/rest.py
     homeassistant/components/switch/transmission.py
-    homeassistant/components/switch/wemo.py
     homeassistant/components/thermostat/heatmiser.py
     homeassistant/components/thermostat/homematic.py
     homeassistant/components/thermostat/proliphix.py
