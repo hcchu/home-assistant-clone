@@ -52,7 +52,8 @@ omit =
     homeassistant/components/*/zwave.py
 
     homeassistant/components/rfxtrx.py
-    homeassistant/components/*/rfxtrx.py
+    homeassistant/components/switch/rfxtrx.py
+    homeassistant/components/light/rfxtrx.py
 
     homeassistant/components/mysensors.py
     homeassistant/components/*/mysensors.py
@@ -116,6 +117,7 @@ omit =
     homeassistant/components/notify/pushetta.py
     homeassistant/components/notify/pushover.py
     homeassistant/components/notify/rest.py
+    homeassistant/components/notify/sendgrid.py
     homeassistant/components/notify/slack.py
     homeassistant/components/notify/smtp.py
     homeassistant/components/notify/syslog.py
@@ -125,6 +127,7 @@ omit =
     homeassistant/components/sensor/arest.py
     homeassistant/components/sensor/bitcoin.py
     homeassistant/components/sensor/cpuspeed.py
+    homeassistant/components/sensor/deutsche_bahn.py
     homeassistant/components/sensor/dht.py
     homeassistant/components/sensor/dweet.py
     homeassistant/components/sensor/efergy.py
@@ -137,6 +140,7 @@ omit =
     homeassistant/components/sensor/openweathermap.py
     homeassistant/components/sensor/rest.py
     homeassistant/components/sensor/sabnzbd.py
+    homeassistant/components/sensor/steam_online.py
     homeassistant/components/sensor/speedtest.py
     homeassistant/components/sensor/swiss_public_transport.py
     homeassistant/components/sensor/systemmonitor.py

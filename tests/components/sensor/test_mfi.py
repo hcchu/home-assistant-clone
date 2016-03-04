@@ -7,6 +7,8 @@ Tests mFi sensor.
 import unittest
 import unittest.mock as mock
 
+import requests
+
 import homeassistant.components.sensor as sensor
 import homeassistant.components.sensor.mfi as mfi
 from homeassistant.const import TEMP_CELCIUS
@@ -25,6 +27,8 @@ class TestMfiSensorSetup(unittest.TestCase):
             'port': 6123,
             'username': 'user',
             'password': 'pass',
+            'use_tls': True,
+            'verify_tls': True,
         }
     }
 
@@ -54,13 +58,23 @@ class TestMfiSensorSetup(unittest.TestCase):
                                          dict(self.GOOD_CONFIG),
                                          None))
 
+    @mock.patch('mficlient.client')
+    def test_setup_failed_connect(self, mock_client):
+        mock_client.FailedToLogin = Exception()
+        mock_client.MFiClient.side_effect = requests.exceptions.ConnectionError
+        self.assertFalse(
+            self.PLATFORM.setup_platform(self.hass,
+                                         dict(self.GOOD_CONFIG),
+                                         None))
+
     @mock.patch('mficlient.client.MFiClient')
     def test_setup_minimum(self, mock_client):
         config = dict(self.GOOD_CONFIG)
         del config[self.THING]['port']
         assert self.COMPONENT.setup(self.hass, config)
         mock_client.assert_called_once_with('foo', 'user', 'pass',
-                                            port=6443)
+                                            port=6443, use_tls=True,
+                                            verify=True)
 
     @mock.patch('mficlient.client.MFiClient')
     def test_setup_with_port(self, mock_client):
@@ -68,7 +82,19 @@ class TestMfiSensorSetup(unittest.TestCase):
         config[self.THING]['port'] = 6123
         assert self.COMPONENT.setup(self.hass, config)
         mock_client.assert_called_once_with('foo', 'user', 'pass',
-                                            port=6123)
+                                            port=6123, use_tls=True,
+                                            verify=True)
+
+    @mock.patch('mficlient.client.MFiClient')
+    def test_setup_with_tls_disabled(self, mock_client):
+        config = dict(self.GOOD_CONFIG)
+        del config[self.THING]['port']
+        config[self.THING]['use_tls'] = False
+        config[self.THING]['verify_tls'] = False
+        assert self.COMPONENT.setup(self.hass, config)
+        mock_client.assert_called_once_with('foo', 'user', 'pass',
+                                            port=6080, use_tls=False,
+                                            verify=False)
 
     @mock.patch('mficlient.client.MFiClient')
     @mock.patch('homeassistant.components.sensor.mfi.MfiSensor')

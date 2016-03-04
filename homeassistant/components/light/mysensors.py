@@ -6,10 +6,10 @@ https://home-assistant.io/components/light.mysensors/
 """
 import logging
 
-import homeassistant.components.mysensors as mysensors
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS, ATTR_RGB_COLOR, Light)
 from homeassistant.const import ATTR_BATTERY_LEVEL, STATE_OFF, STATE_ON
+from homeassistant.loader import get_component
 from homeassistant.util.color import rgb_hex_to_rgb_list
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,17 +25,17 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     if discovery_info is None:
         return
 
+    mysensors = get_component('mysensors')
+
     for gateway in mysensors.GATEWAYS.values():
         # Define the S_TYPES and V_TYPES that the platform should handle as
         # states. Map them in a dict of lists.
         pres = gateway.const.Presentation
         set_req = gateway.const.SetReq
         map_sv_types = {
-            pres.S_LIGHT: [set_req.V_LIGHT],
             pres.S_DIMMER: [set_req.V_DIMMER],
         }
         device_class_map = {
-            pres.S_LIGHT: MySensorsLightPlain,
             pres.S_DIMMER: MySensorsLightDimmer,
         }
         if float(gateway.version) >= 1.5:
@@ -43,7 +43,6 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             map_sv_types.update({
                 pres.S_RGB_LIGHT: [set_req.V_RGB],
             })
-            map_sv_types[pres.S_LIGHT].append(set_req.V_STATUS)
             map_sv_types[pres.S_DIMMER].append(set_req.V_PERCENTAGE)
             device_class_map.update({
                 pres.S_RGB_LIGHT: MySensorsLightRGB,
@@ -72,6 +71,7 @@ class MySensorsLight(Light):
         self._brightness = None
         self._rgb = None
         self._white = None
+        self.mysensors = get_component('mysensors')
 
     @property
     def should_poll(self):
@@ -102,9 +102,9 @@ class MySensorsLight(Light):
     def device_state_attributes(self):
         """Return device specific state attributes."""
         device_attr = {
-            mysensors.ATTR_PORT: self.gateway.port,
-            mysensors.ATTR_NODE_ID: self.node_id,
-            mysensors.ATTR_CHILD_ID: self.child_id,
+            self.mysensors.ATTR_PORT: self.gateway.port,
+            self.mysensors.ATTR_NODE_ID: self.node_id,
+            self.mysensors.ATTR_CHILD_ID: self.child_id,
             ATTR_BATTERY_LEVEL: self.battery_level,
         }
         for value_type, value in self._values.items():
@@ -115,6 +115,11 @@ class MySensorsLight(Light):
     def available(self):
         """Return True if entity is available."""
         return self.value_type in self._values
+
+    @property
+    def assumed_state(self):
+        """Return True if unable to access real state of entity."""
+        return self.gateway.optimistic
 
     @property
     def is_on(self):
@@ -258,25 +263,6 @@ class MySensorsLight(Light):
             _LOGGER.debug(
                 '%s: value_type %s, value = %s', self._name, value_type, value)
             self._values[value_type] = value
-
-
-class MySensorsLightPlain(MySensorsLight):
-    """Light child class to MySensorsLight."""
-
-    def turn_on(self, **kwargs):
-        """Turn the device on."""
-        self._turn_on_light()
-
-    def turn_off(self, **kwargs):
-        """Turn the device off."""
-        ret = self._turn_off_light()
-        self._turn_off_main(value_type=ret[
-            ATTR_VALUE_TYPE], value=ret[ATTR_VALUE])
-
-    def update(self):
-        """Update the controller with the latest value from a sensor."""
-        self._update_main()
-        self._update_light()
 
 
 class MySensorsLightDimmer(MySensorsLight):
