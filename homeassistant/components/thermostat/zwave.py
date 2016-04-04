@@ -120,9 +120,9 @@ class ZwaveThermostat(ThermostatDevice):
     def target_temperature(self):
         cooling_label = "{}_{}".format(self._node.node_id, "Cooling 1")
         heating_label = "{}_{}".format(self._node.node_id, "Heating 1")
-        if abs(self._sensor.data - self._setpoints[heating_label].data) < abs(self._sensor.data - self._setpoints[cooling_label].data):
+        if self._mode.data == "Heat":
             return self._setpoints[heating_label].data
-        else:
+        elif self._mode.data == "Cool":
             return self._setpoints[cooling_label].data
 
     @property
