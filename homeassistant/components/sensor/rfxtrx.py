@@ -39,7 +39,7 @@ def setup_platform(hass, config, add_devices_callback, discovery_info=None):
         event = rfxtrx.get_rfx_object(entity_info[ATTR_PACKETID])
         new_sensor = RfxtrxSensor(event, entity_info[ATTR_NAME],
                                   entity_info.get(ATTR_DATA_TYPE, None))
-        rfxtrx.RFX_DEVICES[device_id] = new_sensor
+        rfxtrx.RFX_DEVICES[slugify(device_id)] = new_sensor
         sensors.append(new_sensor)
 
     add_devices_callback(sensors)
@@ -53,6 +53,12 @@ def setup_platform(hass, config, add_devices_callback, discovery_info=None):
 
         if device_id in rfxtrx.RFX_DEVICES:
             rfxtrx.RFX_DEVICES[device_id].event = event
+            k = 2
+            _device_id = device_id + "_" + str(k)
+            while _device_id in rfxtrx.RFX_DEVICES:
+                rfxtrx.RFX_DEVICES[_device_id].event = event
+                k = k + 1
+                _device_id = device_id + "_" + str(k)
             return
 
         # Add entity if not exist and the automatic_add is True
@@ -73,9 +79,10 @@ def setup_platform(hass, config, add_devices_callback, discovery_info=None):
 
 
 class RfxtrxSensor(Entity):
-    """Represents a RFXtrx sensor."""
+    """Representation of a RFXtrx sensor."""
 
     def __init__(self, event, name, data_type=None):
+        """Initialize the sensor."""
         self.event = event
         self._unit_of_measurement = None
         self._data_type = None
@@ -91,12 +98,12 @@ class RfxtrxSensor(Entity):
                 break
 
     def __str__(self):
-        """Returns the name."""
+        """Return the name of the sensor."""
         return self._name
 
     @property
     def state(self):
-        """Returns the state of the sensor."""
+        """Return the state of the sensor."""
         if self._data_type:
             return self.event.values[self._data_type]
         return None
@@ -108,10 +115,10 @@ class RfxtrxSensor(Entity):
 
     @property
     def device_state_attributes(self):
-        """Returns the state attributes."""
+        """Return the state attributes."""
         return self.event.values
 
     @property
     def unit_of_measurement(self):
-        """Unit this state is expressed in."""
+        """Return the unit this state is expressed in."""
         return self._unit_of_measurement
